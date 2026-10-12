@@ -1,0 +1,930 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#09090b">
+  <title>Power Profiles — Energy Dashboard</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.8/dist/chart.umd.min.js"></script>
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg: #09090b;
+      --panel: rgba(24, 24, 29, .75);
+      --line: rgba(255, 255, 255, .1);
+      --text: #f4f4f5;
+      --muted: #a1a1aa;
+      --cyan: #22d3ee;
+      --violet: #a78bfa;
+      --green: #34d399;
+      --red: #fb7185;
+      --r: 22px
+    }
+
+    * {
+      box-sizing: border-box
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      color: var(--text);
+      font: 15px/1.5 Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+      background: radial-gradient(ellipse at 10% 3%, rgba(34, 211, 238, .13), transparent 32rem), radial-gradient(ellipse at 90% 15%, rgba(167, 139, 250, .14), transparent 34rem), var(--bg)
+    }
+
+    button,
+    input,
+    select {
+      font: inherit
+    }
+
+    button {
+      color: inherit
+    }
+
+    .hidden {
+      display: none !important
+    }
+
+    .glass {
+      border: 1px solid var(--line);
+      background: var(--panel);
+      box-shadow: 0 18px 55px #0005, inset 0 1px #ffffff08;
+      backdrop-filter: blur(18px);
+      -webkit-backdrop-filter: blur(18px)
+    }
+
+    .shell {
+      width: min(1160px, 100%);
+      margin: auto;
+      padding: 22px 18px 110px
+    }
+
+    .top {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 28px
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 11px;
+      font-size: 19px;
+      font-weight: 760;
+      letter-spacing: -.04em
+    }
+
+    .mark {
+      display: grid;
+      place-items: center;
+      width: 42px;
+      height: 42px;
+      border-radius: 15px;
+      color: #071014;
+      background: linear-gradient(135deg, var(--cyan), var(--violet));
+      box-shadow: 0 0 26px #22d3ee40
+    }
+
+    .top-actions {
+      display: flex;
+      align-items: center;
+      gap: 9px
+    }
+
+    .user {
+      color: var(--muted);
+      font-size: 13px
+    }
+
+    .lang {
+      width: auto;
+      min-height: 40px;
+      padding: 6px 9px
+    }
+
+    input,
+    select {
+      width: 100%;
+      min-height: 44px;
+      padding: 10px 12px;
+      color: var(--text);
+      border: 1px solid var(--line);
+      border-radius: 13px;
+      outline: none;
+      background: #09090b99
+    }
+
+    input:focus,
+    select:focus {
+      border-color: #22d3eeaa;
+      box-shadow: 0 0 0 3px #22d3ee18
+    }
+
+    input::placeholder {
+      color: #71717a
+    }
+
+    select option {
+      background: #18181b
+    }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 7px;
+      min-height: 42px;
+      padding: 9px 14px;
+      border: 1px solid var(--line);
+      border-radius: 13px;
+      background: #ffffff0a;
+      cursor: pointer;
+      transition: .18s
+    }
+
+    .btn:hover {
+      transform: translateY(-1px);
+      background: #ffffff14
+    }
+
+    .btn:disabled {
+      opacity: .55;
+      cursor: wait;
+      transform: none
+    }
+
+    .primary {
+      border: 0;
+      color: #071014;
+      font-weight: 750;
+      background: linear-gradient(110deg, var(--cyan), #8b9dfb 60%, var(--violet))
+    }
+
+    .danger {
+      border-color: #fb718544;
+      color: #fda4af
+    }
+
+    .heading {
+      margin: 0;
+      font-size: clamp(28px, 5vw, 40px);
+      line-height: 1.15;
+      letter-spacing: -.055em
+    }
+
+    .heading span {
+      color: var(--cyan)
+    }
+
+    .caption {
+      margin: 8px 0 24px;
+      color: var(--muted)
+    }
+
+    .tab {
+      display: none;
+      animation: up .26s ease
+    }
+
+    .tab.active {
+      display: block
+    }
+
+    @keyframes up {
+      from {
+        opacity: 0;
+        transform: translateY(7px)
+      }
+
+      to {
+        opacity: 1;
+        transform: none
+      }
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: 1.1fr .9fr;
+      gap: 17px
+    }
+
+    .card {
+      padding: 21px;
+      border-radius: var(--r)
+    }
+
+    .eyebrow {
+      color: var(--muted);
+      font-size: 13px
+    }
+
+    .cost {
+      margin: 8px 0 3px;
+      font-size: clamp(38px, 7vw, 55px);
+      font-weight: 760;
+      letter-spacing: -.06em
+    }
+
+    .cost small {
+      color: var(--muted);
+      font-size: 15px;
+      font-weight: 500;
+      letter-spacing: 0
+    }
+
+    .rule {
+      height: 1px;
+      margin: 18px 0;
+      background: linear-gradient(90deg, transparent, #22d3ee99, #a78bfa77, transparent)
+    }
+
+    .metrics {
+      display: flex;
+      gap: 27px;
+      flex-wrap: wrap
+    }
+
+    .metric {
+      font-size: 19px;
+      font-weight: 650
+    }
+
+    .chart-card {
+      display: grid;
+      grid-template-columns: minmax(145px, 1fr) minmax(130px, .8fr);
+      align-items: center;
+      gap: 12px
+    }
+
+    .chart-wrap {
+      position: relative;
+      max-width: 240px;
+      margin: auto
+    }
+
+    .chart-center {
+      position: absolute;
+      inset: 0;
+      display: grid;
+      place-content: center;
+      text-align: center;
+      pointer-events: none
+    }
+
+    .chart-center strong {
+      font-size: 21px
+    }
+
+    .chart-center span {
+      font-size: 11px;
+      color: var(--muted)
+    }
+
+    .legend {
+      display: grid;
+      gap: 11px
+    }
+
+    .legend-row {
+      display: grid;
+      grid-template-columns: 9px 1fr auto;
+      gap: 8px;
+      align-items: center;
+      font-size: 12px;
+      color: #d4d4d8
+    }
+
+    .dot {
+      width: 9px;
+      height: 9px;
+      border-radius: 50%
+    }
+
+    .section-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: end;
+      gap: 14px;
+      margin: 30px 0 13px
+    }
+
+    .section-head h2 {
+      margin: 0;
+      font-size: 19px;
+      letter-spacing: -.03em
+    }
+
+    .section-head p {
+      margin: 4px 0 0;
+      color: var(--muted);
+      font-size: 13px
+    }
+
+    .list {
+      display: grid;
+      gap: 12px
+    }
+
+    .item {
+      padding: 17px 18px;
+      border-radius: 18px
+    }
+
+    .item-top {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      align-items: start
+    }
+
+    .item-name {
+      font-weight: 680
+    }
+
+    .item-meta,
+    .note {
+      color: var(--muted);
+      font-size: 12px
+    }
+
+    .item-cost {
+      font-weight: 700;
+      white-space: nowrap
+    }
+
+    .actions {
+      display: flex;
+      align-items: center;
+      gap: 6px
+    }
+
+    .icon {
+      width: 33px;
+      height: 33px;
+      min-height: 33px;
+      padding: 0;
+      border-radius: 10px
+    }
+
+    .track {
+      height: 6px;
+      overflow: hidden;
+      margin-top: 13px;
+      border-radius: 99px;
+      background: #ffffff12
+    }
+
+    .fill {
+      height: 100%;
+      width: 0;
+      border-radius: inherit;
+      background: linear-gradient(90deg, var(--cyan), var(--violet));
+      transition: width .6s cubic-bezier(.2, .8, .2, 1)
+    }
+
+    .temp-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+      margin-top: 11px
+    }
+
+    .temp-row input {
+      width: 112px;
+      min-height: 35px;
+      padding: 6px 9px;
+      font-size: 12px
+    }
+
+    .temp-btn {
+      min-height: 34px;
+      padding: 6px 10px;
+      font-size: 12px
+    }
+
+    .temp-reason {
+      color: #a5f3fc;
+      font-size: 12px
+    }
+
+    .temp-badge {
+      padding: 3px 7px;
+      border: 1px solid #22d3ee44;
+      border-radius: 99px;
+      color: #a5f3fc;
+      font-size: 11px;
+      white-space: nowrap
+    }
+
+    .scanner {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 9px;
+      margin-top: 12px
+    }
+
+    .presets {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 11px
+    }
+
+    .preset {
+      min-height: 35px;
+      padding: 6px 10px;
+      font-size: 12px
+    }
+
+    .empty {
+      padding: 26px;
+      text-align: center;
+      border-radius: 18px;
+      color: var(--muted)
+    }
+
+    .settings-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 17px
+    }
+
+    .field {
+      display: grid;
+      gap: 7px;
+      margin: 14px 0
+    }
+
+    .field label {
+      color: #d4d4d8;
+      font-size: 13px
+    }
+
+    .rate {
+      max-width: 220px
+    }
+
+    .nav {
+      position: fixed;
+      z-index: 10;
+      left: 50%;
+      bottom: max(14px, env(safe-area-inset-bottom));
+      display: flex;
+      gap: 4px;
+      padding: 7px;
+      border: 1px solid #ffffff20;
+      border-radius: 999px;
+      background: #18181bd9;
+      box-shadow: 0 12px 44px #0007;
+      backdrop-filter: blur(18px);
+      transform: translateX(-50%)
+    }
+
+    .nav button {
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      min-height: 42px;
+      padding: 0 16px;
+      border: 0;
+      border-radius: 999px;
+      color: var(--muted);
+      background: transparent;
+      cursor: pointer;
+      white-space: nowrap
+    }
+
+    .nav button.active {
+      color: #071014;
+      font-weight: 700;
+      background: linear-gradient(110deg, var(--cyan), #b4a3fa)
+    }
+
+    .overlay {
+      position: fixed;
+      z-index: 30;
+      inset: 0;
+      display: grid;
+      place-items: center;
+      padding: 18px;
+      background: #050507b8;
+      backdrop-filter: blur(9px)
+    }
+
+    .modal {
+      width: min(720px, 100%);
+      max-height: min(88dvh, 780px);
+      overflow: auto;
+      padding: 22px;
+      border-radius: 25px;
+      animation: up .22s ease
+    }
+
+    .modal-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: start;
+      gap: 12px
+    }
+
+    .modal-head h2 {
+      margin: 0;
+      font-size: 22px;
+      letter-spacing: -.035em
+    }
+
+    .modal-head p {
+      margin: 5px 0 0;
+      color: var(--muted);
+      font-size: 13px
+    }
+
+    .model-grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 11px;
+      margin: 18px 0
+    }
+
+    .model-card {
+      min-height: 122px;
+      padding: 14px;
+      border: 1px solid var(--line);
+      border-radius: 17px;
+      background: #ffffff06;
+      cursor: pointer;
+      transition: .18s
+    }
+
+    .model-card:hover {
+      border-color: #22d3ee80;
+      transform: translateY(-2px)
+    }
+
+    .model-card.selected {
+      border-color: var(--cyan);
+      background: linear-gradient(135deg, #22d3ee17, #a78bfa17);
+      box-shadow: 0 0 0 1px #22d3ee44, 0 10px 25px #22d3ee10
+    }
+
+    .model-card:focus-visible {
+      outline: 2px solid var(--cyan);
+      outline-offset: 2px
+    }
+
+    .model-card strong {
+      display: block;
+      margin-bottom: 8px;
+      line-height: 1.35
+    }
+
+    .model-card span {
+      display: block;
+      color: var(--muted);
+      font-size: 12px
+    }
+
+    .modal-edit {
+      display: grid;
+      grid-template-columns: 1fr 170px;
+      gap: 12px;
+      align-items: end;
+      padding-top: 16px;
+      border-top: 1px solid var(--line)
+    }
+
+    .modal-edit .field {
+      margin: 0
+    }
+
+    .modal-actions {
+      display: flex;
+      justify-content: flex-end;
+      gap: 9px;
+      margin-top: 17px
+    }
+
+    .reason-box {
+      margin-top: 12px;
+      padding: 11px 13px;
+      border: 1px solid #22d3ee30;
+      border-radius: 13px;
+      color: #a5f3fc;
+      background: #22d3ee0b;
+      font-size: 13px
+    }
+
+    .toast {
+      position: fixed;
+      z-index: 50;
+      left: 50%;
+      bottom: 88px;
+      max-width: calc(100vw - 30px);
+      padding: 11px 15px;
+      border: 1px solid var(--line);
+      border-radius: 13px;
+      background: #22222af2;
+      box-shadow: 0 10px 30px #0007;
+      opacity: 0;
+      transform: translate(-50%, 12px);
+      pointer-events: none;
+      transition: .2s
+    }
+
+    .toast.show {
+      opacity: 1;
+      transform: translate(-50%, 0)
+    }
+
+    @media(max-width:740px) {
+
+      .grid,
+      .settings-grid {
+        grid-template-columns: 1fr
+      }
+
+      .chart-card {
+        grid-template-columns: minmax(140px, .9fr) minmax(120px, 1fr)
+      }
+
+      .shell {
+        padding: 17px 14px 110px
+      }
+
+      .user {
+        display: none
+      }
+
+      .nav button {
+        padding: 0 13px
+      }
+
+      .model-grid {
+        grid-template-columns: 1fr
+      }
+
+      .model-card {
+        min-height: 0
+      }
+
+      .modal {
+        padding: 18px
+      }
+
+      .overlay {
+        padding: 10px
+      }
+
+      .modal-edit {
+        grid-template-columns: 1fr 130px
+      }
+    }
+
+    @media(max-width:430px) {
+      .chart-card {
+        grid-template-columns: 1fr
+      }
+
+      .chart-wrap {
+        width: 190px
+      }
+
+      .legend {
+        grid-template-columns: 1fr 1fr
+      }
+
+      .nav button {
+        gap: 5px;
+        padding: 0 11px;
+        font-size: 13px
+      }
+
+      .top-actions {
+        gap: 5px
+      }
+
+      .lang {
+        max-width: 116px
+      }
+
+      .scanner {
+        grid-template-columns: 1fr
+      }
+
+      .scanner .btn {
+        width: 100%
+      }
+
+      .modal-edit {
+        grid-template-columns: 1fr
+      }
+
+      .modal-actions {
+        display: grid;
+        grid-template-columns: 1fr 1fr
+      }
+    }
+
+    @media(prefers-reduced-motion:reduce) {
+
+      *,
+      *::before,
+      *::after {
+        scroll-behavior: auto !important;
+        transition-duration: .01ms !important;
+        animation-duration: .01ms !important
+      }
+    }
+  </style>
+</head>
+
+<body>
+  <main class="shell">
+    <header class="top">
+      <div class="brand">
+        <div class="mark">⚡</div><span>Power Profiles</span>
+      </div>
+      <div class="top-actions"><span id="userLabel" class="user"></span><select id="language" class="lang"
+          aria-label="Language">
+          <option value="en">🇬🇧 English</option>
+          <option value="th">🇹🇭 ไทย</option>
+          <option value="zh">🇨🇳 中文</option>
+        </select></div>
+    </header>
+
+    <section id="dashboard" class="tab active" data-tab="dashboard">
+      <h1 class="heading" data-i18n="hello">Your energy, <span>in focus.</span></h1>
+      <p class="caption" data-i18n="dashCaption">A clear view of your estimated monthly electricity use.</p>
+      <div class="grid">
+        <article class="card glass">
+          <div class="eyebrow" data-i18n="monthlyBill">Estimated monthly bill</div>
+          <div class="cost"><span id="cost">฿0.00</span> <small data-i18n="perMonth">/ month</small></div>
+          <div class="rule"></div>
+          <div class="metrics">
+            <div>
+              <div class="eyebrow" data-i18n="energyUse">Energy use</div>
+              <div id="kwh" class="metric">0 kWh</div>
+            </div>
+            <div>
+              <div class="eyebrow" data-i18n="appliances">Appliances</div>
+              <div id="count" class="metric">0</div>
+            </div>
+            <div>
+              <div class="eyebrow" data-i18n="gridRate">Grid rate</div>
+              <div id="rateSummary" class="metric">฿4.20/kWh</div>
+            </div>
+          </div>
+        </article>
+        <article class="card glass chart-card">
+          <div class="chart-wrap"><canvas id="energyChart" aria-label="Energy use by appliance"></canvas>
+            <div class="chart-center"><strong id="chartKwh">0</strong><span>kWh / month</span></div>
+          </div>
+          <div id="legend" class="legend"></div>
+        </article>
+      </div>
+      <div class="section-head">
+        <div>
+          <h2 data-i18n="usageBreakdown">Usage breakdown</h2>
+          <p data-i18n="monthEstimates">Monthly estimates based on your inputs.</p>
+        </div><button class="btn" data-go="appliances" data-i18n="manage">Manage appliances</button>
+      </div>
+      <div id="dashboardList" class="list"></div>
+    </section>
+
+    <section id="appliances" class="tab" data-tab="appliances">
+      <h1 class="heading" data-i18n="yourAppliances">Your <span>appliances.</span></h1>
+      <p class="caption" data-i18n="applianceCaption">Track the devices that shape your monthly energy bill.</p>
+      <article class="card glass">
+        <h2 style="margin:0;font-size:18px" data-i18n="addAppliance">Add an appliance</h2>
+        <form id="manualForm" class="scanner"><input id="manualName" required maxlength="60" data-placeholder="name"
+            placeholder="Name" aria-label="Appliance name"><input id="manualWatts" required type="number" min="1"
+            max="100000" placeholder="Watts" aria-label="Watts"><input id="manualHours" required type="number" min="0.1"
+            max="24" step="0.1" placeholder="Hours/day" aria-label="Hours per day"><button class="btn primary"
+            type="submit" data-i18n="add">Add</button></form>
+        <div class="presets"><button class="btn preset" data-preset="ac" type="button" data-i18n="ac">＋ AC
+            unit</button><button class="btn preset" data-preset="fridge" type="button" data-i18n="fridge">＋
+            Fridge</button><button class="btn preset" data-preset="fan" type="button" data-i18n="fan">＋
+            Fan</button><button class="btn preset" data-preset="laptop" type="button" data-i18n="laptop">＋
+            Laptop</button></div>
+      </article>
+      <article class="card glass" style="margin-top:15px">
+        <div class="eyebrow" data-i18n="aiSearch">AI appliance search</div>
+        <form id="searchForm" class="scanner"><input id="searchQuery" required maxlength="250" data-placeholder="search"
+            placeholder="e.g. LG Fridge" aria-label="Search appliance models"><button id="searchButton"
+            class="btn primary" type="submit" data-i18n="search">✦ Search</button></form>
+        <div class="note" data-i18n="aiNote">AI estimates are approximate; check your product label for exact
+          specifications.</div>
+      </article>
+      <div class="section-head">
+        <div>
+          <h2 data-i18n="allAppliances">All appliances</h2>
+          <p id="summary"></p>
+        </div>
+      </div>
+      <div id="applianceList" class="list"></div>
+    </section>
+
+    <section id="settings" class="tab" data-tab="settings">
+      <h1 class="heading" data-i18n="settingsTitle">Your <span>settings.</span></h1>
+      <p class="caption" data-i18n="settingsCaption">Tune the estimate to your electricity rate.</p>
+      <div class="settings-grid">
+        <article class="card glass">
+          <h2 style="margin-top:0" data-i18n="electricityRate">Electricity rate</h2>
+          <div class="field"><label for="rateInput" data-i18n="rateLabel">Grid rate (THB per kWh)</label><input
+              id="rateInput" class="rate" type="number" min="0" max="1000" step="0.01"></div>
+          <p class="note" data-i18n="rateNote">Adjust this value to match your bill.</p>
+        </article>
+        <article class="card glass">
+          <h2 style="margin-top:0" data-i18n="dataSettings">Local data</h2>
+          <p class="note" data-i18n="dataNote">Your profile and appliances are stored in this browser.</p><button
+            id="reset" class="btn danger" type="button" data-i18n="resetData">Reset local data</button>
+        </article>
+      </div>
+    </section>
+  </main>
+
+  <nav class="nav glass" aria-label="Main navigation"><button class="active" type="button" data-target="dashboard">◫
+      <span data-i18n="dashboard">Dashboard</span></button><button type="button" data-target="appliances">⌂ <span
+        data-i18n="appliances">Appliances</span></button><button type="button" data-target="settings">⚙ <span
+        data-i18n="settings">Settings</span></button></nav>
+
+  <div id="modelOverlay" class="overlay hidden" role="dialog" aria-modal="true" aria-labelledby="modelTitle">
+    <section class="modal glass">
+      <header class="modal-head">
+        <div>
+          <h2 id="modelTitle" data-i18n="chooseModel">Choose a matching model</h2>
+          <p id="modelSubtitle" data-i18n="chooseHint">Select a product, then review or edit its rated watts.</p>
+        </div><button id="modalClose" class="btn icon" type="button" aria-label="Close">×</button>
+      </header>
+      <div id="modelGrid" class="model-grid"></div>
+      <div class="modal-edit">
+        <div class="field"><label for="selectedName" data-i18n="productName">Product name</label><input
+            id="selectedName" maxlength="80"></div>
+        <div class="field"><label for="selectedWatts" data-i18n="wattsExact">Watts (edit if known)</label><input
+            id="selectedWatts" type="number" min="1" max="100000" step="1"></div>
+      </div>
+      <div class="modal-edit" style="grid-template-columns:1fr">
+        <div class="field"><label for="selectedHours" data-i18n="hoursDay">Estimated hours per day</label><input
+            id="selectedHours" type="number" min="0.1" max="24" step="0.1"></div>
+      </div>
+      <div class="modal-actions"><button id="cancelModels" class="btn" type="button"
+          data-i18n="cancel">Cancel</button><button id="confirmModel" class="btn primary" type="button"
+          data-i18n="confirmAdd">Confirm &amp; Add</button></div>
+    </section>
+  </div>
+  <div id="toast" class="toast" role="status" aria-live="polite"></div>
+
+  <script>
+    "use strict";
+    // This is a local-first demo. Authentication is not implemented; use a real identity provider for production.
+    const STORE = { items: "powerProfiles.appliances.v2", rate: "powerProfiles.rate.v2", lang: "powerProfiles.language.v1" };
+    const COLORS = ["#22d3ee", "#a78bfa", "#34d399", "#f472b6", "#fbbf24", "#60a5fa", "#fb7185", "#2dd4bf"];
+    const STR = {
+      en: { hello: 'Your energy, <span>in focus.</span>', dashCaption: "A clear view of your estimated monthly electricity use.", monthlyBill: "Estimated monthly bill", perMonth: "/ month", energyUse: "Energy use", appliances: "Appliances", gridRate: "Grid rate", usageBreakdown: "Usage breakdown", monthEstimates: "Monthly estimates based on your inputs.", manage: "Manage appliances", yourAppliances: 'Your <span>appliances.</span>', applianceCaption: "Track the devices that shape your monthly energy bill.", addAppliance: "Add an appliance", add: "Add", aiSearch: "AI appliance search", search: "✦ Search", aiNote: "AI estimates are approximate; check your product label for exact specifications.", allAppliances: "All appliances", settingsTitle: 'Your <span>settings.</span>', settingsCaption: "Tune the estimate to your electricity rate.", electricityRate: "Electricity rate", rateLabel: "Grid rate (THB per kWh)", rateNote: "Adjust this value to match your bill.", dataSettings: "Local data", dataNote: "Your profile and appliances are stored in this browser.", resetData: "Reset local data", dashboard: "Dashboard", settings: "Settings", ac: "＋ AC unit", fridge: "＋ Fridge", fan: "＋ Fan", laptop: "＋ Laptop", chooseModel: "Choose a matching model", chooseHint: "Select a product, then review or edit its rated watts.", productName: "Product name", wattsExact: "Watts (edit if known)", hoursDay: "Estimated hours per day", cancel: "Cancel", confirmAdd: "Confirm & Add", name: "Name", searchPh: "e.g. LG Fridge", empty: "No appliances yet. Add one above to estimate your energy use.", summary: n => `${n} appliance${n === 1 ? "" : "s"} in your profile.`, remove: "Remove", tempSync: "AI Temp Sync", outside: "Outside °C", tempReason: "AI adjustment", tempUpdated: "Temperature estimate updated.", addOk: "Appliance added.", badInputs: "Enter a name, positive watts, and 0–24 hours/day.", noModels: "No product models were returned. Try a more specific query.", aiFail: "AI request failed. Check your connection and try again.", chooseFirst: "Select a model first.", badWatt: "Enter a valid wattage and hours per day.", emptyChart: "Add an appliance to see your usage breakdown.", tempFail: "Could not estimate temperature impact. Try again." },
+      th: { hello: 'พลังงานของคุณ <span>เห็นภาพชัดเจน</span>', dashCaption: "ดูภาพรวมการใช้ไฟฟ้ารายเดือนโดยประมาณ", monthlyBill: "ค่าไฟรายเดือนโดยประมาณ", perMonth: "/ เดือน", energyUse: "การใช้พลังงาน", appliances: "เครื่องใช้ไฟฟ้า", gridRate: "อัตราค่าไฟ", usageBreakdown: "รายละเอียดการใช้ไฟ", monthEstimates: "ประมาณการรายเดือนจากข้อมูลของคุณ", manage: "จัดการเครื่องใช้ไฟฟ้า", yourAppliances: 'เครื่องใช้ไฟฟ้า<span>ของคุณ</span>', applianceCaption: "ติดตามอุปกรณ์ที่มีผลต่อค่าไฟรายเดือน", addAppliance: "เพิ่มเครื่องใช้ไฟฟ้า", add: "เพิ่ม", aiSearch: "ค้นหาเครื่องใช้ไฟฟ้าด้วย AI", search: "✦ ค้นหา", aiNote: "ค่าประมาณจาก AI อาจคลาดเคลื่อน โปรดตรวจสอบฉลากสินค้า", allAppliances: "เครื่องใช้ไฟฟ้าทั้งหมด", settingsTitle: 'การ<span>ตั้งค่า</span>', settingsCaption: "ปรับประมาณการให้ตรงกับอัตราค่าไฟ", electricityRate: "อัตราค่าไฟฟ้า", rateLabel: "อัตราค่าไฟ (บาทต่อ kWh)", rateNote: "ปรับค่าให้ตรงกับบิลของคุณ", dataSettings: "ข้อมูลในเครื่อง", dataNote: "ข้อมูลจะบันทึกไว้ในเบราว์เซอร์นี้", resetData: "ล้างข้อมูลในเครื่อง", dashboard: "แดชบอร์ด", settings: "ตั้งค่า", ac: "＋ เครื่องปรับอากาศ", fridge: "＋ ตู้เย็น", fan: "＋ พัดลม", laptop: "＋ แล็ปท็อป", chooseModel: "เลือกรุ่นสินค้า", chooseHint: "เลือกรุ่น จากนั้นตรวจสอบหรือแก้ไขกำลังไฟ", productName: "ชื่อสินค้า", wattsExact: "วัตต์ (แก้ไขได้)", hoursDay: "ชั่วโมงต่อวันโดยประมาณ", cancel: "ยกเลิก", confirmAdd: "ยืนยันและเพิ่ม", name: "ชื่อ", searchPh: "เช่น ตู้เย็น LG", empty: "ยังไม่มีเครื่องใช้ไฟฟ้า เพิ่มอุปกรณ์ด้านบน", summary: n => `มีเครื่องใช้ไฟฟ้า ${n} รายการ`, remove: "ลบ", tempSync: "ปรับตามอุณหภูมิ AI", outside: "อุณหภูมิภายนอก °C", tempReason: "การปรับด้วย AI", tempUpdated: "อัปเดตค่าประมาณตามอุณหภูมิแล้ว", addOk: "เพิ่มเครื่องใช้ไฟฟ้าแล้ว", badInputs: "กรอกชื่อ วัตต์มากกว่า 0 และชั่วโมงระหว่าง 0–24", noModels: "ไม่พบรุ่นสินค้า ลองระบุคำค้นให้ชัดเจนขึ้น", aiFail: "เรียก AI ไม่สำเร็จ โปรดลองอีกครั้ง", chooseFirst: "เลือกสินค้าก่อน", badWatt: "กรอกวัตต์และชั่วโมงต่อวันที่ถูกต้อง", emptyChart: "เพิ่มเครื่องใช้ไฟฟ้าเพื่อดูรายละเอียดการใช้ไฟ", tempFail: "ประเมินผลของอุณหภูมิไม่ได้ โปรดลองอีกครั้ง" },
+      zh: { hello: '让你的能源使用<span>一目了然。</span>', dashCaption: "查看每月预计用电量。", monthlyBill: "预计每月电费", perMonth: "/ 月", energyUse: "用电量", appliances: "电器", gridRate: "电价", usageBreakdown: "用电明细", monthEstimates: "根据你的输入估算每月用电。", manage: "管理电器", yourAppliances: '你的<span>电器。</span>', applianceCaption: "追踪影响每月电费的设备。", addAppliance: "添加电器", add: "添加", aiSearch: "AI 电器搜索", search: "✦ 搜索", aiNote: "AI 结果仅供估算。实际规格请查看产品标签。", allAppliances: "全部电器", settingsTitle: '你的<span>设置。</span>', settingsCaption: "根据电价调整估算。", electricityRate: "电价", rateLabel: "电价（泰铢/kWh）", rateNote: "请调整为与你的账单一致。", dataSettings: "本地数据", dataNote: "资料和电器数据保存在此浏览器。", resetData: "清除本地数据", dashboard: "仪表盘", settings: "设置", ac: "＋ 空调", fridge: "＋ 冰箱", fan: "＋ 风扇", laptop: "＋ 笔记本电脑", chooseModel: "选择匹配型号", chooseHint: "选择产品，然后查看或修改额定功率。", productName: "产品名称", wattsExact: "功率（瓦，可编辑）", hoursDay: "预计每天使用小时数", cancel: "取消", confirmAdd: "确认并添加", name: "名称", searchPh: "例如 LG 冰箱", empty: "还没有电器。请在上方添加设备。", summary: n => `资料中有 ${n} 台电器。`, remove: "移除", tempSync: "AI 温度同步", outside: "室外温度 °C", tempReason: "AI 调整", tempUpdated: "温度估算已更新。", addOk: "已添加电器。", badInputs: "请输入名称、正数瓦数和 0–24 小时/天。", noModels: "未找到型号，请尝试更具体的搜索。", aiFail: "AI 请求失败，请检查网络并重试。", chooseFirst: "请先选择型号。", badWatt: "请输入有效瓦数和每日小时数。", emptyChart: "添加电器以查看用电明细。", tempFail: "无法估算温度影响，请重试。" }
+    };
+    const PRESETS = { ac: { name: "Air conditioner", watts: 1200, hours: 8, compressor: true }, fridge: { name: "Refrigerator", watts: 150, hours: 24, compressor: true }, fan: { name: "Fan", watts: 55, hours: 8, compressor: false }, laptop: { name: "Laptop", watts: 65, hours: 6, compressor: false } };
+    const read = (key, fallback) => { try { const x = localStorage.getItem(key); return x ? JSON.parse(x) : fallback } catch { return fallback } };
+    let appliances = read(STORE.items, []), rate = Number(read(STORE.rate, 4.2)), lang = read(STORE.lang, "en"), chart = null, selectedModels = [], chosen = -1, toastTimer;
+    if (!Array.isArray(appliances)) appliances = []; if (!Number.isFinite(rate) || rate < 0) rate = 4.2; if (!STR[lang]) lang = "en";
+    const tr = k => STR[lang]?.[k] ?? STR.en[k] ?? k;
+    const esc = s => String(s).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+    const kwh = a => Number(a.watts) * Number(a.hours) * 30 / 1000;
+    const money = n => new Intl.NumberFormat(lang === "th" ? "th-TH" : lang === "zh" ? "zh-CN" : "en-US", { style: "currency", currency: "THB", maximumFractionDigits: 2 }).format(n);
+    function persist() { localStorage.setItem(STORE.items, JSON.stringify(appliances)) }
+    function toast(s) { const el = document.getElementById("toast"); el.textContent = s; el.classList.add("show"); clearTimeout(toastTimer); toastTimer = setTimeout(() => el.classList.remove("show"), 2600) }
+    function add(item) { appliances.push({ id: crypto.randomUUID?.() || `${Date.now()}-${Math.random()}`, name: String(item.name).trim(), watts: Number(item.watts), hours: Number(item.hours), compressor: Boolean(item.compressor), baseWatts: Number(item.baseWatts) || Number(item.watts), tempMultiplier: Number(item.tempMultiplier) || 1, tempReason: item.tempReason || "" }); persist(); render() }
+    function itemMarkup(a, index, total) { const pct = total ? kwh(a) / total * 100 : 0; const cost = kwh(a) * rate; const compressor = a.compressor ? `<div class="temp-row"><label class="eyebrow" for="temp-${esc(a.id)}">${esc(tr("outside"))}</label><input id="temp-${esc(a.id)}" type="number" min="-40" max="60" step="0.5" value="${Number.isFinite(Number(a.outsideTemp)) ? Number(a.outsideTemp) : 30}" aria-label="${esc(tr("outside"))}"><button class="btn temp-btn temp-btn-sync" type="button" data-temp="${esc(a.id)}">${esc(tr("tempSync"))}</button>${a.tempMultiplier && a.tempMultiplier !== 1 ? `<span class="temp-badge">×${Number(a.tempMultiplier).toFixed(2)}</span>` : ""}${a.tempReason ? `<span class="temp-reason">${esc(a.tempReason)}</span>` : ""}</div>` : ""; return `<article class="item glass"><div class="item-top"><div><div class="item-name">${esc(a.name)}</div><div class="item-meta">${Number(a.watts).toLocaleString()} W · ${Number(a.hours)} h/day · ${kwh(a).toFixed(1)} kWh/month ${a.tempMultiplier && a.tempMultiplier !== 1 ? `· ${esc(tr("tempReason"))}` : ""}</div></div><div class="actions"><div class="item-cost">${money(cost)}</div><button class="btn icon" type="button" data-remove="${esc(a.id)}" aria-label="${esc(tr("remove"))} ${esc(a.name)}">×</button></div></div><div class="track"><div class="fill" style="width:${Math.min(100, pct)}%;background:${COLORS[index % COLORS.length]}"></div></div>${compressor}</article>` }
+    function renderList(id, max = Infinity) { const root = document.getElementById(id), total = appliances.reduce((s, a) => s + kwh(a), 0), items = appliances.slice(0, max); root.innerHTML = items.length ? items.map((a, i) => itemMarkup(a, i, total)).join() : `<div class="empty glass">${esc(tr("empty"))}</div>` }
+    function renderChart() { const canvas = document.getElementById("energyChart"), legend = document.getElementById("legend"); chart?.destroy(); chart = new Chart(canvas, { type: "doughnut", data: { labels: appliances.length ? appliances.map(a => a.name) : ["—"], datasets: [{ data: appliances.length ? appliances.map(kwh) : [1], backgroundColor: appliances.length ? appliances.map((_, i) => COLORS[i % COLORS.length]) : ["#ffffff18"], borderColor: "#111116", borderWidth: 4, hoverOffset: 7 }] }, options: { responsive: true, cutout: "74%", plugins: { legend: { display: false }, tooltip: { callbacks: { label: c => `${c.label}: ${Number(c.raw).toFixed(1)} kWh/month` } } } } }); legend.innerHTML = appliances.slice(0, 6).map((a, i) => `<div class="legend-row"><i class="dot" style="background:${COLORS[i % COLORS.length]}"></i><span>${esc(a.name)}</span><b>${kwh(a).toFixed(0)}</b></div>`).join("") || `<div class="note">${esc(tr("emptyChart"))}</div>` }
+    function render() { const total = appliances.reduce((s, a) => s + kwh(a), 0); document.getElementById("cost").textContent = money(total * rate); document.getElementById("kwh").textContent = `${total.toFixed(1)} kWh`; document.getElementById("chartKwh").textContent = total.toFixed(1); document.getElementById("count").textContent = appliances.length; document.getElementById("rateSummary").textContent = `${money(rate)}/kWh`; document.getElementById("rateInput").value = rate; document.getElementById("summary").textContent = typeof tr("summary") === "function" ? tr("summary")(appliances.length) : `${appliances.length} appliances`; renderList("applianceList"); renderList("dashboardList", 4); renderChart(); }
+    function applyLanguage() { document.documentElement.lang = lang; document.getElementById("language").value = lang; document.querySelectorAll("[data-i18n]").forEach(el => { const v = tr(el.dataset.i18n); if (typeof v === "string" && v.includes("<span>")) el.innerHTML = v; else if (typeof v === "string") el.textContent = v }); document.querySelectorAll("[data-placeholder]").forEach(el => { const key = el.dataset.placeholder; el.placeholder = key === "name" ? tr("name") : key === "search" ? tr("searchPh") : "" }); render() }
+    function tab(name) { document.querySelectorAll(".tab").forEach(el => el.classList.toggle("active", el.dataset.tab === name)); document.querySelectorAll(".nav [data-target]").forEach(el => el.classList.toggle("active", el.dataset.target === name)); window.scrollTo({ top: 0, behavior: "smooth" }) }
+    async function api(payload) { const res = await fetch("/api/search", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) }); const data = await res.json().catch(() => ({})); if (!res.ok) throw new Error(data.error || tr("aiFail")); return data }
+    function closeModal() { document.getElementById("modelOverlay").classList.add("hidden"); selectedModels = []; chosen = -1 }
+    function selectModel(i) { chosen = i; document.querySelectorAll(".model-card").forEach((card, n) => card.classList.toggle("selected", n === i)); const m = selectedModels[i]; if (m) { document.getElementById("selectedName").value = m.name; document.getElementById("selectedWatts").value = m.watt; document.getElementById("selectedHours").value = m.hours } }
+    function showModels(models, query) { selectedModels = models; chosen = -1; document.getElementById("modelSubtitle").textContent = `${tr("chooseHint")} “${query}”`; document.getElementById("modelGrid").innerHTML = models.map((m, i) => `<article class="model-card" tabindex="0" role="button" aria-pressed="false" data-model="${i}"><strong>${esc(m.name)}</strong><span>${Number(m.watt).toLocaleString()} W</span><span>${Number(m.hours)} h/day · ${((m.watt * m.hours * 30) / 1000).toFixed(1)} kWh/month</span></article>`).join(""); document.getElementById("modelOverlay").classList.remove("hidden"); document.querySelectorAll(".model-card").forEach(card => { card.addEventListener("click", () => selectModel(Number(card.dataset.model))); card.addEventListener("keydown", e => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); selectModel(Number(card.dataset.model)) } }) }); document.querySelector(".model-card")?.focus() }
+    document.querySelectorAll(".nav [data-target]").forEach(b => b.addEventListener("click", () => tab(b.dataset.target))); document.querySelectorAll("[data-go]").forEach(b => b.addEventListener("click", () => tab(b.dataset.go)));
+    document.getElementById("language").addEventListener("change", e => { lang = e.target.value; localStorage.setItem(STORE.lang, lang); applyLanguage() });
+    document.getElementById("manualForm").addEventListener("submit", e => { e.preventDefault(); const item = { name: document.getElementById("manualName").value.trim(), watts: +document.getElementById("manualWatts").value, hours: +document.getElementById("manualHours").value, compressor: false }; if (!item.name || item.watts <= 0 || item.hours <= 0 || item.hours > 24) return toast(tr("badInputs")); add(item); e.currentTarget.reset(); toast(tr("addOk")) });
+    document.querySelectorAll("[data-preset]").forEach(b => b.addEventListener("click", () => { const p = PRESETS[b.dataset.preset]; add(p); toast(tr("addOk")) }));
+    document.addEventListener("click", async e => { const remove = e.target.closest("[data-remove]"); if (remove) { appliances = appliances.filter(a => a.id !== remove.dataset.remove); persist(); render(); return } const sync = e.target.closest("[data-temp]"); if (!sync) return; const id = sync.dataset.temp, a = appliances.find(x => x.id === id), tempInput = document.getElementById(`temp-${CSS.escape(id)}`), temperature = Number(tempInput?.value); if (!a || !Number.isFinite(temperature) || temperature < -40 || temperature > 60) return toast(tr("badInputs")); sync.disabled = true; const old = sync.textContent; sync.textContent = "…"; try { const result = await api({ type: "temperature", applianceName: a.name, temperature, watts: Number(a.baseWatts) || Number(a.watts) }); const multiplier = Number(result.multiplier); if (!Number.isFinite(multiplier) || multiplier < .5 || multiplier > 2 || typeof result.reason !== "string") throw Error(tr("tempFail")); a.outsideTemp = temperature; a.baseWatts = Number(a.baseWatts) || Number(a.watts); a.tempMultiplier = multiplier; a.watts = Math.round(a.baseWatts * multiplier); a.tempReason = result.reason.slice(0, 160); persist(); render(); toast(tr("tempUpdated")) } catch (err) { toast(err.message || tr("tempFail")) } finally { const fresh = document.querySelector(`[data-temp="${CSS.escape(id)}"]`); if (fresh) { fresh.disabled = false; fresh.textContent = old } } });
+    document.getElementById("searchForm").addEventListener("submit", async e => { e.preventDefault(); const query = document.getElementById("searchQuery").value.trim(), button = document.getElementById("searchButton"); button.disabled = true; button.textContent = "…"; try { const data = await api({ type: "search", query }); const models = data.models; if (!Array.isArray(models) || !models.length) throw Error(tr("noModels")); showModels(models, query) } catch (err) { toast(err.message || tr("aiFail")) } finally { button.disabled = false; button.textContent = tr("search") } });
+    document.getElementById("modalClose").addEventListener("click", closeModal); document.getElementById("cancelModels").addEventListener("click", closeModal); document.getElementById("modelOverlay").addEventListener("click", e => { if (e.target.id === "modelOverlay") closeModal() }); document.addEventListener("keydown", e => { if (e.key === "Escape") closeModal() });
+    document.getElementById("confirmModel").addEventListener("click", () => { if (chosen < 0) return toast(tr("chooseFirst")); const item = { name: document.getElementById("selectedName").value.trim(), watts: Number(document.getElementById("selectedWatts").value), hours: Number(document.getElementById("selectedHours").value), compressor: Boolean(selectedModels[chosen].compressor) }; if (!item.name || item.watts <= 0 || item.watts > 100000 || item.hours <= 0 || item.hours > 24) return toast(tr("badWatt")); add(item); closeModal(); document.getElementById("searchQuery").value = ""; tab("dashboard"); toast(tr("addOk")) });
+    document.getElementById("rateInput").addEventListener("change", e => { const n = Number(e.target.value); if (!Number.isFinite(n) || n < 0 || n > 1000) { e.target.value = rate; return } rate = n; localStorage.setItem(STORE.rate, String(rate)); render() });
+    document.getElementById("reset").addEventListener("click", () => { if (!confirm("Clear saved appliances and rate from this browser?")) return; appliances = []; rate = 4.2; localStorage.removeItem(STORE.items); localStorage.removeItem(STORE.rate); render(); toast("Local data reset.") });
+    let sx = 0, sy = 0; document.addEventListener("touchstart", e => { if (e.touches.length === 1) { sx = e.touches[0].clientX; sy = e.touches[0].clientY } }, { passive: true }); document.addEventListener("touchend", e => { const dx = e.changedTouches[0].clientX - sx, dy = e.changedTouches[0].clientY - sy; if (Math.abs(dx) < 75 || Math.abs(dx) < Math.abs(dy) * 1.35) return; const cur = document.querySelector(".tab.active")?.dataset.tab; if (cur === "dashboard" && dx < 0) tab("appliances"); else if (cur === "appliances" && dx > 0) tab("dashboard") }, { passive: true });
+    // Initial migration/validation also normalizes older data records.
+    appliances = appliances.filter(a => a && typeof a.name === "string" && Number(a.watts) > 0 && Number(a.hours) > 0 && Number(a.hours) <= 24).map(a => ({ ...a, id: a.id || crypto.randomUUID?.() || `${Date.now()}-${Math.random()}`, baseWatts: Number(a.baseWatts) || Number(a.watts), compressor: Boolean(a.compressor) })); persist(); applyLanguage();
+  </script>
+</body>
+
+</html>
